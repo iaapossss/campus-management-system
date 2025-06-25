@@ -1,0 +1,232 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}学生管理 - 校园综合管理系统{% endblock %}
+
+{% block content %}
+    <h1>学生管理</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div style="padding: 16px 0;">
+        <table class="layui-hide" id="studentTable" lay-filter="studentTable"></table>
+    </div>
+
+    <script type="text/html" id="toolbarStudents">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="addStudent">添加学生</button>
+            <button class="layui-btn layui-btn-sm layui-bg-red" lay-event="batchDelete">批量删除</button>
+
+            <div class="layui-inline" style="margin-left: 20px;">
+                <label class="layui-form-label" style="width: auto; padding-right: 5px;">专业:</label>
+                <div class="layui-input-inline" style="width: 150px;">
+                    <select id="filterMajor" lay-filter="filterMajor">
+                        </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width: auto; padding-right: 5px;">学号/姓名:</label>
+                <div class="layui-input-inline">
+                    <input type="text" id="searchKeyword" placeholder="请输入学号或姓名" autocomplete="off" class="layui-input">
+                </div>
+                <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="search">搜索</button>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/html" id="barStudents">
+        <div class="layui-clear-space">
+            <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+            <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+        </div>
+    </script>
+{% endblock %}
+
+{# START: 将所有 Layui 相关的 JavaScript 放到 custom_js 块内 #}
+{% block custom_js %}
+<script>
+    // 确保 Layui 模块在 DOM 准备好且 Layui JS 加载后才使用
+    layui.use(['table', 'layer', 'form', 'dropdown'], function(){ // 添加 dropdown 模块
+        var table = layui.table;
+        var layer = layui.layer;
+        var form = layui.form;
+        var $ = layui.$; // 获取 jQuery 对象，方便操作 DOM
+        var dropdown = layui.dropdown; // 引入 dropdown 模块
+
+        // 辅助函数：重新加载学生表格
+        var reloadStudentTable = function(searchParams = {}) {
+            table.reload('studentTable', {
+                where: searchParams,
+                page: { curr: 1 } // 从第一页开始
+            });
+        };
+
+        // 渲染学生表格
+        table.render({
+            elem: '#studentTable',
+            url: '{{ url_for("admin.get_students") }}', // 假设这是获取学生数据的API
+            toolbar: '#toolbarStudents', // 绑定头部工具栏
+            defaultToolbar: ['filter', 'exports', 'print'], // 默认右上角工具栏
+            cols: [[
+                {type: 'checkbox', fixed: 'left'},
+                {field: 'id', title: 'ID', width: 80, sort: true, hide: true}, // 可以隐藏 ID 字段
+                {field: 'student_id', title: '学号', width: 120, sort: true},
+                {field: 'name', title: '姓名', width: 120},
+                {field: 'major', title: '专业', width: 150},
+                {field: 'birthdate', title: '出生日期', width: 120, sort: true, templet: function(d){
+                    // 格式化日期显示
+                    return d.birthdate ? layui.util.toDateString(d.birthdate, 'yyyy-MM-dd') : '';
+                }},
+                {field: 'enrollment_date', title: '入学日期', width: 120, sort: true, templet: function(d){
+                    return d.enrollment_date ? layui.util.toDateString(d.enrollment_date, 'yyyy-MM-dd') : '';
+                }},
+                {field: 'origin', title: '生源地', minWidth: 120},
+                {fixed: 'right', title: '操作', toolbar: '#barStudents', width: 150}
+            ]],
+            page: true, // 开启分页
+            limit: 10, // 每页显示的条数
+            limits: [10, 20, 30, 40, 50], // 可选的每页条数
+            height: 'full-180', // 全屏高度减去一定偏移量，防止遮挡
+            parseData: function(res){ // 对后端返回的数据进行预处理
+                return {
+                    "code": res.code, // 解析接口状态
+                    "msg": res.msg, // 解析提示文本
+                    "count": res.count, // 解析数据总数量
+                    "data": res.data // 解析数据列表
+                };
+            },
+            done: function(res, curr, count){
+                // 获取所有专业并填充筛选下拉框
+                $.get('{{ url_for("admin.get_all_majors") }}', function(res){ // 假设后端有一个接口返回所有专业列表
+                    var selectMajor = $('#filterMajor');
+                    selectMajor.empty();
+                    selectMajor.append('<option value="">所有专业</option>'); // 添加默认选项
+                    layui.each(res.data, function(index, item){
+                        selectMajor.append('<option value="'+ item +'">'+ item +'</option>');
+                    });
+                    form.render('select'); // 重新渲染select组件
+                    // 如果有当前筛选值，设置选中
+                    if(this.where && this.where.major){
+                        selectMajor.val(this.where.major);
+                        form.render('select');
+                    }
+                });
+            }
+        });
+
+        // 监听头部工具栏事件
+        table.on('toolbar(studentTable)', function(obj){
+            var checkStatus = table.checkStatus(obj.config.id); // 获取选中行数据
+            switch(obj.event){
+                case 'addStudent':
+                    layer.open({
+                        type: 2, // iframe 层
+                        title: '添加新学生',
+                        area: ['50%', '80%'], // 宽度和高度
+                        content: '{{ url_for("admin.add_student_form") }}', // 指向添加学生的表单页面
+                        end: function(){ // 弹窗关闭后的回调
+                            reloadStudentTable(); // 重新加载表格数据
+                        }
+                    });
+                    break;
+                case 'batchDelete':
+                    var data = checkStatus.data;
+                    if(data.length === 0){
+                        layer.msg('请选择要删除的学生', {icon: 5});
+                        return;
+                    }
+                    layer.confirm('确定要批量删除这 ' + data.length + ' 名学生吗？', {icon: 3, title:'提示'}, function(index){
+                        var student_ids = data.map(item => item.id); // 获取选中学生的ID数组
+                        fetch('{{ url_for("admin.batch_delete_students") }}', { // 假设后端有批量删除接口
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ student_ids: student_ids })
+                        })
+                        .then(response => response.json())
+                        .then(res => {
+                            if(res.code === 0){
+                                layer.msg('批量删除成功', {icon: 1});
+                                reloadStudentTable(); // 重新加载表格数据
+                            } else {
+                                layer.msg(res.msg || '批量删除失败', {icon: 5});
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            layer.msg('请求失败', {icon: 5});
+                        });
+                        layer.close(index);
+                    });
+                    break;
+                case 'search':
+                    var major = $('#filterMajor').val();
+                    var keyword = $('#searchKeyword').val();
+                    reloadStudentTable({
+                        major: major,
+                        keyword: keyword
+                    });
+                    break;
+            }
+        });
+
+        // 监听行工具条事件（编辑、删除）
+        table.on('tool(studentTable)', function(obj){
+            var data = obj.data; // 获得当前行数据
+            var layEvent = obj.event; // 获得 lay-event 对应的值
+
+            if(layEvent === 'edit'){
+                layer.open({
+                    type: 2,
+                    title: '编辑学生信息',
+                    area: ['50%', '80%'],
+                    content: '{{ url_for("admin.edit_student_form") }}?student_id=' + data.id, // 指向编辑学生的表单页面
+                    end: function(){
+                        reloadStudentTable(); // 重新加载表格数据
+                    }
+                });
+            } else if(layEvent === 'del'){
+                layer.confirm('确定要删除学生：' + data.name + ' (' + data.student_id + ') 吗？', {icon: 3, title:'提示'}, function(index){
+                    fetch('{{ url_for("admin.delete_student", student_id="") }}' + data.id, {
+                        method: 'POST', // 或 'DELETE' 根据您的后端API设计
+                    })
+                    .then(response => response.json())
+                    .then(res => {
+                        if(res.code === 0){
+                            obj.del(); // 删除表格行
+                            layer.msg('删除成功', {icon: 1});
+                        } else {
+                            layer.msg(res.msg || '删除失败', {icon: 5});
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        layer.msg('请求失败', {icon: 5});
+                    });
+                    layer.close(index);
+                });
+            }
+        });
+
+        // 监听专业筛选下拉框变化
+        form.on('select(filterMajor)', function(data){
+            var major = data.value;
+            var keyword = $('#searchKeyword').val();
+            reloadStudentTable({
+                major: major,
+                keyword: keyword
+            });
+        });
+
+    });
+</script>
+{% endblock %}
+{# END: custom_js 块 #}

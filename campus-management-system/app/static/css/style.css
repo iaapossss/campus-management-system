@@ -1,0 +1,343 @@
+/* app/static/css/style.css */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f5f7;
+    color: #333;
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+#app-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Header */
+#main-header {
+    background-color: #393d49;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.main-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.main-nav li {
+    position: relative;
+    margin-left: 20px;
+}
+
+.main-nav a {
+    color: white;
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+.main-nav a:hover {
+    background-color: #555;
+}
+
+.nav-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.submenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #4a4a4a;
+    min-width: 120px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    z-index: 1;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 4px;
+}
+
+.main-nav li:hover .submenu {
+    display: block;
+}
+
+.submenu li a {
+    color: white;
+    padding: 10px 15px;
+    display: block;
+    white-space: nowrap;
+}
+
+.submenu li a:hover {
+    background-color: #666;
+}
+
+/* Sidebar */
+#main-sidebar {
+    width: 220px;
+    background-color: #2e323b;
+    color: white;
+    padding-top: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav li a {
+    display: block;
+    padding: 12px 20px;
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.sidebar-nav li a:hover,
+.sidebar-nav li.active a {
+    background-color: #009688; /* Layui 默认的主题色 */
+    color: white;
+}
+
+.sidebar-nav .has-submenu a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-nav .sub-menu {
+    list-style: none;
+    padding-left: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background-color: #3a3f4a;
+}
+
+.sidebar-nav .has-submenu.expanded .sub-menu {
+    max-height: 500px; /* Adjust as needed for content */
+}
+
+.sidebar-nav .sub-menu li a {
+    padding-left: 40px;
+    font-size: 0.9em;
+    color: rgba(255,255,255,0.7);
+}
+
+.sidebar-nav .sub-menu li a:hover,
+.sidebar-nav .sub-menu li.active a {
+    background-color: #008075;
+}
+
+
+/* Main Content Area */
+#main-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    margin: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+.content-padding {
+    padding: 15px;
+}
+
+/* Layout for main content and sidebar */
+body {
+    display: flex;
+    flex-direction: row; /* Sidebar and main content side-by-side */
+}
+#app-wrapper {
+    flex-direction: row; /* Override default column for wrapper */
+    width: auto;
+    flex-grow: 1;
+}
+
+#main-content {
+    flex-grow: 1;
+    margin: 0; /* Remove margin as it's within flex context */
+    padding: 20px;
+}
+
+
+/* Footer */
+#main-footer {
+    background-color: #eee;
+    color: #666;
+    text-align: center;
+    padding: 15px 20px;
+    border-top: 1px solid #ddd;
+    margin-top: auto; /* Push footer to bottom */
+    width: 100%;
+}
+
+/* General Flash Messages */
+.flashes {
+    list-style: none;
+    padding: 10px 20px;
+    margin: 0 0 20px 0;
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.flashes li {
+    padding: 8px 0;
+}
+
+.flashes .success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.flashes .error, .flashes .danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.flashes .warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Basic Button Styles (can be overridden by specific page CSS) */
+.action-button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.action-button.primary {
+    background-color: #009688; /* Layui green */
+    color: white;
+}
+
+.action-button.primary:hover {
+    background-color: #00796b;
+}
+
+.action-button.danger {
+    background-color: #ff5722; /* Layui red */
+    color: white;
+}
+
+.action-button.danger:hover {
+    background-color: #e64a19;
+}
+
+/* style.css - 校园综合管理系统 自定义样式 */
+
+body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+}
+
+/* 全局闪现消息样式 */
+ul.flashes {
+    list-style: none;
+    padding: 10px;
+    margin: 0 0 20px;
+}
+
+ul.flashes li {
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+ul.flashes li.info {
+    background-color: #e6f7ff;
+    color: #1890ff;
+}
+
+ul.flashes li.success {
+    background-color: #f6ffed;
+    color: #52c41a;
+}
+
+ul.flashes li.warning {
+    background-color: #fffbe6;
+    color: #faad14;
+}
+
+ul.flashes li.error {
+    background-color: #fff1f0;
+    color: #f5222d;
+}
+
+/* 自定义 Logo 样式 */
+.layui-logo {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+}
+
+/* 管理员头像边框美化 */
+.layui-nav-img {
+    border-radius: 50%;
+    border: 2px solid #5FB878;
+}
+
+/* 主要按钮增加圆角和阴影 */
+.layui-btn {
+    border-radius: 4px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 页面内部主要区域统一边距 */
+.layui-body > div {
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+/* 统一表格字体大小 */
+.layui-table th, .layui-table td {
+    font-size: 14px;
+}
+
+/* 顶部导航用户菜单对齐优化 */
+.layui-layout-right .layui-nav-item {
+    margin-left: 10px;
+}
