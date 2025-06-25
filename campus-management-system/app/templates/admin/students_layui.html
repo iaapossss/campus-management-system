@@ -1,0 +1,250 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}学生管理 - 校园综合管理系统{% endblock %}
+
+{% block content %}
+    <h1>学生管理</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div style="padding: 16px 0;">
+        <table class="layui-hide" id="studentTable" lay-filter="studentTable"></table>
+    </div>
+
+    <script type="text/html" id="toolbarStudents">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="addStudent">添加学生</button>
+            <button class="layui-btn layui-btn-sm layui-bg-red" lay-event="batchDelete">批量删除</button>
+
+            <div class="layui-inline" style="margin-left: 20px;">
+                <label class="layui-form-label" style="width: auto; padding-right: 5px;">专业:</label>
+                <div class="layui-input-inline" style="width: 150px;">
+                    <select id="filterMajor" lay-filter="filterMajor">
+                        </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width: auto; padding-right: 5px;">学号/姓名:</label>
+                <div class="layui-input-inline">
+                    <input type="text" id="searchKeyword" placeholder="请输入学号或姓名" autocomplete="off" class="layui-input">
+                </div>
+                <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="search">搜索</button>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/html" id="barStudents">
+        <div class="layui-clear-space">
+            <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+            <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+        </div>
+    </script>
+{% endblock %}
+
+{% block custom_js %}
+<script>
+    layui.use(['table', 'layer', 'form'], function(){
+        var table = layui.table;
+        var layer = layui.layer;
+        var form = layui.form;
+        var $ = layui.$;
+
+        // 获取 JWT 令牌
+        const jwtToken = localStorage.getItem('jwt_token');
+
+        // 辅助函数：获取带 JWT 的请求头
+        const getAuthHeaders = () => {
+            const headers = { 'Content-Type': 'application/json' };
+            if (jwtToken) {
+                headers['Authorization'] = 'Bearer ' + jwtToken;
+            }
+            return headers;
+        };
+
+        // 辅助函数：重新加载学生表格
+        var reloadStudentTable = function(searchParams = {}) {
+            table.reload('studentTable', {
+                where: searchParams,
+                page: { curr: 1 },
+                headers: getAuthHeaders() // ✅ 修正点: 确保 reload 时也带上 JWT 头
+            });
+        };
+
+        // 渲染学生表格
+        table.render({
+            elem: '#studentTable',
+            url: '{{ url_for("admin.api_students") }}',
+            toolbar: '#toolbarStudents',
+            defaultToolbar: ['filter', 'exports', 'print'],
+            cols: [[
+                {type: 'checkbox', fixed: 'left'},
+                {field: 'id', title: 'ID', width: 80, sort: true, hide: true},
+                {field: 'student_id', title: '学号', width: 120, sort: true},
+                {field: 'name', title: '姓名', width: 120},
+                {field: 'gender', title: '性别', width: 80},
+                {field: 'major', title: '专业', width: 150},
+                {field: 'class_name', title: '班级', width: 120},
+                {field: 'hometown', title: '生源地', minWidth: 120},
+                {fixed: 'right', title: '操作', toolbar: '#barStudents', width: 150}
+            ]],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 30, 40, 50],
+            height: 'full-180',
+        
+            parseData: function(res){
+                return {
+                    "code": res.code,
+                    "msg": res.msg || '',
+                    "count": res.count,
+                    "data": res.data
+                };
+            },
+            done: function(res, curr, count){
+                // 获取专业列表的请求也需要 JWT
+                $.ajax({
+                    url: '{{ url_for("admin.get_distinct_majors") }}',
+                    type: 'GET',
+                    headers: getAuthHeaders(), // ✅ 修正点: 为 Ajax 请求添加 JWT 头
+                    success: function(majors_res) {
+                        if(majors_res.code === 0 && majors_res.data){
+                            var selectMajor = $('#filterMajor');
+                            selectMajor.empty();
+                            selectMajor.append('<option value="">所有专业</option>');
+                            layui.each(majors_res.data, function(index, item){
+                                selectMajor.append('<option value="'+ item +'">'+ item +'</option>');
+                            });
+                            form.render('select');
+
+                            if(this.where && this.where.major){
+                                selectMajor.val(this.where.major);
+                                form.render('select');
+                            }
+                        } else {
+                            console.error('获取专业列表失败:', majors_res.msg || '未知错误');
+                            layer.msg(majors_res.msg || '获取专业列表失败', {icon: 5});
+                        }
+                    }.bind(this),
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('请求专业列表 API 失败:', textStatus, errorThrown);
+                        console.error('API 响应文本:', jqXHR.responseText);
+                        layer.msg('请求专业列表失败，请检查网络或后端配置', {icon: 5});
+                    }
+                });
+            }
+        });
+
+        // 监听头部工具栏事件
+        table.on('toolbar(studentTable)', function(obj){
+            var checkStatus = table.checkStatus(obj.config.id);
+            switch(obj.event){
+                case 'addStudent':
+                    layer.open({
+                        type: 2,
+                        title: '添加新学生',
+                        area: ['50%', '80%'],
+                        content: '{{ url_for("admin.add_student_form") }}',
+                        end: function(){
+                            reloadStudentTable();
+                        }
+                    });
+                    break;
+                case 'batchDelete':
+                    var data = checkStatus.data;
+                    if(data.length === 0){
+                        layer.msg('请选择要删除的学生', {icon: 5});
+                        return;
+                    }
+                    layer.confirm('确定要批量删除这 ' + data.length + ' 名学生吗？', {icon: 3, title:'提示'}, function(index){
+                        var student_ids = data.map(item => item.id);
+                        fetch('{{ url_for("admin.batch_delete_students") }}', {
+                            method: 'POST',
+                            headers: getAuthHeaders(), // ✅ 修正点: 为 fetch 请求添加 JWT 头
+                            body: JSON.stringify({ ids: student_ids })
+                        })
+                        .then(response => response.json())
+                        .then(res => {
+                            if(res.code === 0){
+                                layer.msg('批量删除成功', {icon: 1});
+                                reloadStudentTable();
+                            } else {
+                                layer.msg(res.msg || '批量删除失败', {icon: 5});
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error (batchDelete):', error);
+                            layer.msg('请求失败', {icon: 5});
+                        });
+                        layer.close(index);
+                    });
+                    break;
+                case 'search':
+                    var major = $('#filterMajor').val();
+                    var keyword = $('#searchKeyword').val();
+                    reloadStudentTable({
+                        major: major,
+                        keyword: keyword
+                    });
+                    break;
+            }
+        });
+
+        // 监听行工具条事件（编辑、删除）
+        table.on('tool(studentTable)', function(obj){
+            var data = obj.data;
+            var layEvent = obj.event;
+
+            if(layEvent === 'edit'){
+                layer.open({
+                    type: 2,
+                    title: '编辑学生信息',
+                    area: ['50%', '80%'],
+                    content: '{{ url_for("admin.edit_student_form") }}?student_id=' + data.id,
+                    end: function(){
+                        reloadStudentTable();
+                    }
+                });
+            } else if(layEvent === 'del'){
+                layer.confirm('确定要删除学生：' + data.name + ' (' + data.student_id + ') 吗？', {icon: 3, title:'提示'}, function(index){
+                    fetch('{{ url_for("admin.delete_student", student_id="") }}' + data.id, {
+                        method: 'POST',
+                        headers: getAuthHeaders(), // ✅ 修正点: 为 fetch 请求添加 JWT 头
+                    })
+                    .then(response => response.json())
+                    .then(res => {
+                        if(res.code === 0){
+                            obj.del();
+                            layer.msg('删除成功', {icon: 1});
+                        } else {
+                            layer.msg(res.msg || '删除失败', {icon: 5});
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error (del):', error);
+                        layer.msg('请求失败', {icon: 5});
+                    });
+                    layer.close(index);
+                });
+            }
+        });
+
+        // 监听专业筛选下拉框变化
+        form.on('select(filterMajor)', function(data){
+            var major = data.value;
+            var keyword = $('#searchKeyword').val();
+            reloadStudentTable({
+                major: major,
+                keyword: keyword
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定义字体 */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 简单居中和背景 */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f2f5; /* 浅灰色背景 */
+        }
+        /* 消息框样式 */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .message-box.success {
+            background-color: #4CAF50; /* 绿色 */
+        }
+        .message-box.error {
+            background-color: #f44336; /* 红色 */
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0; /* 修正：让加载层覆盖整个屏幕 */
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            display: none; /* 默认隐藏 */
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #009688; /* Layui 绿色 */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm border border-gray-200">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">管理员登录</h2>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">用户名:</label>
+                    <input type="text" id="username" name="username" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent transition duration-200 ease-in-out"
+                           placeholder="请输入用户名">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">密码:</label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent transition duration-200 ease-in-out"
+                           placeholder="请输入密码">
+                </div>
+                <button type="submit"
+                        class="w-full bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                    登录
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 消息提示框 -->
+    <div id="messageBox" class="message-box"></div>
+
+    <!-- 加载指示器 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messageBox = document.getElementById('messageBox');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // 显示消息提示框
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show ' + type;
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000); // 3秒后自动消失
+        }
+
+        // 显示/隐藏加载指示器
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // 阻止表单默认提交行为
+
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+
+            showLoading(); // 显示加载指示器
+
+            try {
+                const response = await fetch('{{ url_for("auth.login") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { // HTTP 状态码 200-299 视为成功
+                    if (data.token) {
+                        localStorage.setItem('jwt_token', data.token); // 将 JWT 令牌存储到 localStorage
+                        showMessage(data.message || '登录成功！', 'success');
+                        
+                        // 修正：登录成功后，不是直接跳转，而是先发起一个带JWT的认证请求到 admin 仪表盘
+                        // 这样可以确保仪表盘页面在加载时就拥有正确的认证信息
+                        // 1. 尝试使用 fetch 获取 admin 页面内容
+                        const dashboardResponse = await fetch('{{ url_for("admin.dashboard") }}', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': 'Bearer ' + data.token // 在这里手动添加JWT
+                            }
+                        });
+
+                        if (dashboardResponse.ok) {
+                            // 如果仪表盘页面请求成功，则浏览器可以直接导航到该页面
+                            window.location.href = '{{ url_for("admin.dashboard") }}';
+                        } else {
+                            // 如果仪表盘页面请求失败（例如，JWT无效或权限不足），处理错误
+                            let errorMessage = '无法加载管理员仪表盘，请尝试重新登录。';
+                            try {
+                                // 尝试解析 JSON 错误信息
+                                const errorData = await dashboardResponse.json();
+                                errorMessage = errorData.message || errorMessage;
+                            } catch (parseError) {
+                                // 如果不是 JSON 格式，则可能是 HTML 错误页面
+                                console.error('Error parsing dashboard response as JSON:', parseError);
+                                // 如果是 422，可能是后端 JWT 处理问题，需要更详细的调试
+                                if (dashboardResponse.status === 422) {
+                                    errorMessage = '认证令牌处理异常，请检查后端日志。';
+                                } else if (dashboardResponse.status === 401) {
+                                     errorMessage = '认证失败或权限不足，请重新登录。';
+                                } else {
+                                     errorMessage = `加载仪表盘失败 (状态码: ${dashboardResponse.status})。`;
+                                }
+                                // 可以选择获取原始文本用于调试
+                                console.error('Dashboard response text:', await dashboardResponse.text());
+                            }
+                            showMessage(errorMessage, 'error');
+                            localStorage.removeItem('jwt_token'); // 清除无效的token
+                        }
+
+                    } else {
+                        showMessage('登录成功但未获取到令牌。', 'error');
+                    }
+                } else {
+                    showMessage(data.message || '登录失败，请检查用户名或密码。', 'error');
+                }
+            } catch (error) {
+                console.error('登录请求错误:', error);
+                showMessage('网络请求失败，请稍后再试。', 'error');
+            } finally {
+                hideLoading(); // 隐藏加载指示器
+            }
+        });
+    </script>
+</body>
+</html>
