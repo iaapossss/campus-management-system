@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}校园综合管理系统 - 管理员端{% endblock %}</title>
+    <link href="https://unpkg.com/layui@2.11.4/dist/css/layui.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="layui-layout-body">
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header">
+            <div class="layui-logo">校园综合管理系统 (管理员)</div>
+            <ul class="layui-nav layui-layout-right">
+                <li class="layui-nav-item">
+                    <a href="javascript:;">
+                        <img src="//unpkg.com/layui@2.11.4/dist/css/modules/layer/default/loading-2.gif" class="layui-nav-img">
+                        管理员
+                    </a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="javascript:alert('功能待开发');">基本资料</a></dd>
+                        <dd><a href="javascript:alert('功能待开发');">安全设置</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item"><a href="{{ url_for('auth.logout') }}">退出</a></li>
+            </ul>
+        </div>
+
+        <div class="layui-side layui-bg-black">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="test">
+                    <li class="layui-nav-item {% if active_page == 'dashboard' %}layui-this{% endif %}">
+                        <a href="{{ url_for('admin.dashboard') }}"><i class="layui-icon layui-icon-home"></i> 仪表盘</a>
+                    </li>
+                    <li class="layui-nav-item {% if active_page == 'users' %}layui-this{% endif %}">
+                        <a href="{{ url_for('admin.manage_users') }}"><i class="layui-icon layui-icon-user"></i> 用户管理</a>
+                    </li>
+                    <li class="layui-nav-item {% if active_page == 'students' %}layui-this{% endif %}">
+                        <a href="{{ url_for('admin.manage_students_layui') }}"><i class="layui-icon layui-icon-face-surprised"></i> 学生管理</a>
+                    </li>
+                    <li class="layui-nav-item {% if active_page == 'teachers' %}layui-this{% endif %}">
+                        <a href="{{ url_for('admin.manage_teachers') }}"><i class="layui-icon layui-icon-senior"></i> 教师管理</a>
+                    </li>
+                    <li class="layui-nav-item {% if active_page == 'courses' %}layui-this{% endif %}">
+                        <a href="{{ url_for('admin.manage_courses') }}"><i class="layui-icon layui-icon-read"></i> 课程管理</a>
+                    </li>
+                    <li class="layui-nav-item {% if active_page == 'grades' %}layui-this{% endif %}">
+                        <a href="{{ url_for('admin.manage_grades') }}"><i class="layui-icon layui-icon-form"></i> 成绩管理</a>
+                    </li>
+                    <li class="layui-nav-item {% if active_page == 'analytics' %}layui-nav-itemed{% endif %}">
+                        <a href="javascript:;"><i class="layui-icon layui-icon-chart-screen"></i> 数据分析</a>
+                        <dl class="layui-nav-child">
+                            <dd {% if active_page == 'grade_analytics' %}class="layui-this"{% endif %}><a href="{{ url_for('admin.data_visualization') }}">成绩分析</a></dd>
+                            <dd {% if active_page == 'hometown_analytics' %}class="layui-this"{% endif %}><a href="{{ url_for('admin.get_hometown_analytics') }}">生源地分析</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body">
+            <div style="padding: 15px;">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+
+        <div class="layui-footer">
+            © 校园综合管理系统 - Layui 版权所有
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/layui@2.11.4/dist/layui.js"></script>
+    <script>
+        // 通用 Layui 模块初始化（如果需要）
+        layui.use(['element', 'layer'], function(){
+            var element = layui.element;
+            var layer = layui.layer;
+
+            // 监听导航点击（这部分是通用逻辑，可以放在base.html）
+            element.on('nav(test)', function(elem){
+                // console.log(elem); // 得到当前点击的DOM对象
+            });
+        });
+    </script>
+    {% block custom_js %}{% endblock %} {# 确保 custom_js 块在 layui.js 引入之后 #}
+</body>
+</html>
